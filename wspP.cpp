@@ -1,10 +1,16 @@
-#include <stdio.h>
-#include <stdlib.h>
+/*
+--------------------------------------------------------------------------
+@developer : Tejas Patil (s387998)
+--------------------------------------------------------------------------
+*/
+#include <iostream>
 #include <mpi.h>
 #include <limits.h>
+#include <fstream>
 
 #define MAX_NODES 100 // Maximum number of cities can be 100
 #define DUMMY 1000    // To keep bound in limit
+using namespace std;
 
 /* Function prototypes */
 void wanderingSalesmanProblem(int num_nodes, int distances[][MAX_NODES], int path[], int path_length, int path_cost, int *best_path, int *best_path_cost);
@@ -54,7 +60,7 @@ int main(int argc, char **argv)
     /* Print the best path and its cost */
     if (rank == 0)
     {
-        printf("Best path: ");
+        cout << "Best path: ";
         printPath(num_nodes, best_path, best_path_cost);
     }
 
@@ -79,7 +85,7 @@ void wanderingSalesmanProblem(int num_nodes, int distances[][MAX_NODES], int pat
     /* If we have reached the last node, check if the path cost is better than the current best path */
     if (path_length == num_nodes)
     {
-        /* Add the cost of the edge from the last node to the starting node */
+        /* Add the dummy cost to the last node */
         path_cost += DUMMY;
 
         /* Update the best path and best path cost if this path is better */
@@ -180,32 +186,34 @@ void printPath(int num_nodes, int path[], int path_cost)
 {
     for (int i = 0; i < num_nodes; i++)
     {
-        printf("%d ", path[i]);
+        cout << path[i] + 1 << " ";
     }
-    printf("\nPath Cost: %d\n", path_cost - DUMMY);
+    cout << "\nPath Cost: " << path_cost - DUMMY << endl;
 }
 
 int readFile(int num_nodes, int distances[][MAX_NODES])
 {
     /* Open the input file */
-    FILE *file = fopen("dist4", "r");
+    // Open the file
+    ifstream file("dist4");
 
-    /* Read the number of nodes */
-    fscanf(file, "%d", &num_nodes);
-    printf("Num Nodes : %d\n", num_nodes);
-    /* Read the lower triangular matrix */
+    // Read the number of nodes
+    file >> num_nodes;
+    cout << "Num Nodes: " << num_nodes << endl;
+
+    // Read the lower triangular matrix
     for (int i = 0; i < num_nodes; i++)
     {
         for (int j = 0; j <= i; j++)
         {
             if (i != j)
             {
-                fscanf(file, "%d", &distances[i][j]);
+                file >> distances[i][j];
             }
         }
     }
 
-    /* Replicate the upper triangular matrix */
+    // Replicate the upper triangular matrix
     for (int i = 0; i < num_nodes; i++)
     {
         for (int j = i + 1; j < num_nodes; j++)
@@ -214,29 +222,27 @@ int readFile(int num_nodes, int distances[][MAX_NODES])
             {
                 distances[i][j] = distances[j][i];
             }
-            else
-            {
-            }
         }
     }
 
-    /* Set diagonal elements to 0 */
+    // Set diagonal elements to 0
     for (int i = 0; i < num_nodes; i++)
     {
         distances[i][i] = 0;
     }
 
-    /* Print the distance matrix */
+    // Print the distance matrix
     for (int i = 0; i < num_nodes; i++)
     {
         for (int j = 0; j < num_nodes; j++)
         {
-            printf("%d ", distances[i][j]);
+            cout << distances[i][j] << " ";
         }
-        printf("\n");
+        cout << endl;
     }
 
-    /* Close the input file */
-    fclose(file);
+    // Close the input file
+    file.close();
+
     return num_nodes;
 }
