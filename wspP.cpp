@@ -3,13 +3,14 @@
 #include <mpi.h>
 #include <limits.h>
 
-#define MAX_NODES 100
-#define dummy 1000
+#define MAX_NODES 100 // Maximum number of cities can be 100
+#define DUMMY 1000    // To keep bound in limit
 
 /* Function prototypes */
-void branch_and_bound(int num_nodes, int distances[][MAX_NODES], int path[], int path_length, int path_cost, int *best_path, int *best_path_cost);
-int calculate_bound(int num_nodes, int distances[][MAX_NODES], int path[], int path_length);
-void print_path(int num_nodes, int path[], int path_cost);
+void wanderingSalesmanProblem(int num_nodes, int distances[][MAX_NODES], int path[], int path_length, int path_cost, int *best_path, int *best_path_cost);
+int calculateBound(int num_nodes, int distances[][MAX_NODES], int path[], int path_length);
+void printPath(int num_nodes, int path[], int path_cost);
+int readFile(int num_nodes, int distances[][MAX_NODES]);
 
 int main(int argc, char **argv)
 {
@@ -27,17 +28,7 @@ int main(int argc, char **argv)
     /* Read input from file */
     if (rank == 0)
     {
-        printf("Enter the number of nodes: ");
-        scanf("%d", &num_nodes);
-
-        printf("Enter the distance matrix: \n");
-        for (int i = 0; i < num_nodes; i++)
-        {
-            for (int j = 0; j < num_nodes; j++)
-            {
-                scanf("%d", &distances[i][j]);
-            }
-        }
+        num_nodes = readFile(num_nodes, distances);
     }
 
     /* Broadcast the number of nodes and distance matrix to all processes */
@@ -58,26 +49,26 @@ int main(int argc, char **argv)
     best_path_cost = INT_MAX;
 
     /* Start the branch and bound algorithm */
-    branch_and_bound(num_nodes, distances, path, path_length, path_cost, best_path, &best_path_cost);
+    wanderingSalesmanProblem(num_nodes, distances, path, path_length, path_cost, best_path, &best_path_cost);
 
     /* Print the best path and its cost */
     if (rank == 0)
     {
         printf("Best path: ");
-        print_path(num_nodes, best_path, best_path_cost);
+        printPath(num_nodes, best_path, best_path_cost);
     }
 
     MPI_Finalize();
     return 0;
 }
 
-void branch_and_bound(int num_nodes, int distances[][MAX_NODES], int path[], int path_length, int path_cost, int *best_path, int *best_path_cost)
+void wanderingSalesmanProblem(int num_nodes, int distances[][MAX_NODES], int path[], int path_length, int path_cost, int *best_path, int *best_path_cost)
 {
     int current_bound;
     int current_path[MAX_NODES];
 
     /* Calculate the current bound */
-    current_bound = calculate_bound(num_nodes, distances, path, path_length);
+    current_bound = calculateBound(num_nodes, distances, path, path_length);
 
     /* If the current bound is greater than or equal to the best path cost, return */
     if (current_bound >= *best_path_cost)
@@ -89,7 +80,7 @@ void branch_and_bound(int num_nodes, int distances[][MAX_NODES], int path[], int
     if (path_length == num_nodes)
     {
         /* Add the cost of the edge from the last node to the starting node */
-        path_cost += dummy;
+        path_cost += DUMMY;
 
         /* Update the best path and best path cost if this path is better */
         if (path_cost < *best_path_cost)
@@ -100,7 +91,7 @@ void branch_and_bound(int num_nodes, int distances[][MAX_NODES], int path[], int
                 best_path[i] = path[i];
             }
         }
-        path_cost -= dummy;
+        path_cost -= DUMMY;
         return;
     }
 
@@ -133,7 +124,7 @@ void branch_and_bound(int num_nodes, int distances[][MAX_NODES], int path[], int
         path_cost += distances[path[path_length - 1]][i];
 
         /* Recursively call the function with the updated path */
-        branch_and_bound(num_nodes, distances, current_path, path_length + 1, path_cost, best_path, best_path_cost);
+        wanderingSalesmanProblem(num_nodes, distances, current_path, path_length + 1, path_cost, best_path, best_path_cost);
 
         /* Remove the node from the path and revert the path cost */
         current_path[path_length] = -1;
@@ -141,7 +132,7 @@ void branch_and_bound(int num_nodes, int distances[][MAX_NODES], int path[], int
     }
 }
 
-int calculate_bound(int num_nodes, int distances[][MAX_NODES], int path[], int path_length)
+int calculateBound(int num_nodes, int distances[][MAX_NODES], int path[], int path_length)
 {
     int bound = 0;
     int min_distance;
@@ -185,11 +176,67 @@ int calculate_bound(int num_nodes, int distances[][MAX_NODES], int path[], int p
     return bound;
 }
 
-void print_path(int num_nodes, int path[], int path_cost)
+void printPath(int num_nodes, int path[], int path_cost)
 {
     for (int i = 0; i < num_nodes; i++)
     {
         printf("%d ", path[i]);
     }
-    printf("\nPath cost: %d\n", path_cost - dummy);
+    printf("\nPath Cost: %d\n", path_cost - DUMMY);
+}
+
+int readFile(int num_nodes, int distances[][MAX_NODES])
+{
+    /* Open the input file */
+    FILE *file = fopen("dist4", "r");
+
+    /* Read the number of nodes */
+    fscanf(file, "%d", &num_nodes);
+    printf("Num Nodes : %d\n", num_nodes);
+    /* Read the lower triangular matrix */
+    for (int i = 0; i < num_nodes; i++)
+    {
+        for (int j = 0; j <= i; j++)
+        {
+            if (i != j)
+            {
+                fscanf(file, "%d", &distances[i][j]);
+            }
+        }
+    }
+
+    /* Replicate the upper triangular matrix */
+    for (int i = 0; i < num_nodes; i++)
+    {
+        for (int j = i + 1; j < num_nodes; j++)
+        {
+            if (i != j)
+            {
+                distances[i][j] = distances[j][i];
+            }
+            else
+            {
+            }
+        }
+    }
+
+    /* Set diagonal elements to 0 */
+    for (int i = 0; i < num_nodes; i++)
+    {
+        distances[i][i] = 0;
+    }
+
+    /* Print the distance matrix */
+    for (int i = 0; i < num_nodes; i++)
+    {
+        for (int j = 0; j < num_nodes; j++)
+        {
+            printf("%d ", distances[i][j]);
+        }
+        printf("\n");
+    }
+
+    /* Close the input file */
+    fclose(file);
+    return num_nodes;
 }
