@@ -1,248 +1,293 @@
-/*
---------------------------------------------------------------------------
-@developer : Tejas Patil (s387998)
---------------------------------------------------------------------------
-*/
+#include <bits/stdc++.h>
 #include <iostream>
+#include <cstring>
+#include <algorithm>
+#include <time.h>
+#include <cmath>
 #include <mpi.h>
-#include <limits.h>
-#include <fstream>
-
-#define MAX_NODES 100 // Maximum number of cities can be 100
-#define DUMMY 1000    // To keep bound in limit
 using namespace std;
 
-/* Function prototypes */
-void wanderingSalesmanProblem(int num_nodes, int distances[][MAX_NODES], int path[], int path_length, int path_cost, int *best_path, int *best_path_cost);
-int calculateBound(int num_nodes, int distances[][MAX_NODES], int path[], int path_length);
-void printPath(int num_nodes, int path[], int path_cost);
-int readFile(int num_nodes, int distances[][MAX_NODES]);
+const int N = 100;
+int n;
+int dist[N][N];
+int curr_path[N];
+int best_path[N];
+int curr_bound;
+int bound;
+bool visited[N];
+int ctr1 = 0;
 
-int main(int argc, char **argv)
+void read()
 {
-    int num_nodes;
-    int distances[MAX_NODES][MAX_NODES];
-    int path[MAX_NODES];
-    int best_path[MAX_NODES];
-    int path_length, path_cost, best_path_cost;
-    int rank, size;
+    FILE *file = fopen("dist17", "r");
 
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    /* Read the number of nodes */
+    fscanf(file, "%d", &n);
 
-    /* Read input from file */
-    if (rank == 0)
-    {
-        num_nodes = readFile(num_nodes, distances);
-    }
-
-    /* Broadcast the number of nodes and distance matrix to all processes */
-    MPI_Bcast(&num_nodes, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(distances, MAX_NODES * MAX_NODES, MPI_INT, 0, MPI_COMM_WORLD);
-
-    /* Initialize path and best_path to -1 */
-    for (int i = 0; i < num_nodes; i++)
-    {
-        path[i] = -1;
-        best_path[i] = -1;
-    }
-
-    /* Set the initial path to start from node 0 */
-    path[0] = 0;
-    path_length = 1;
-    path_cost = 0;
-    best_path_cost = INT_MAX;
-
-    /* Start the branch and bound algorithm */
-    wanderingSalesmanProblem(num_nodes, distances, path, path_length, path_cost, best_path, &best_path_cost);
-
-    /* Print the best path and its cost */
-    if (rank == 0)
-    {
-        cout << "Best path: ";
-        printPath(num_nodes, best_path, best_path_cost);
-    }
-
-    MPI_Finalize();
-    return 0;
-}
-
-void wanderingSalesmanProblem(int num_nodes, int distances[][MAX_NODES], int path[], int path_length, int path_cost, int *best_path, int *best_path_cost)
-{
-    int current_bound;
-    int current_path[MAX_NODES];
-
-    /* Calculate the current bound */
-    current_bound = calculateBound(num_nodes, distances, path, path_length);
-
-    /* If the current bound is greater than or equal to the best path cost, return */
-    if (current_bound >= *best_path_cost)
-    {
-        return;
-    }
-
-    /* If we have reached the last node, check if the path cost is better than the current best path */
-    if (path_length == num_nodes)
-    {
-        /* Add the dummy cost to the last node */
-        path_cost += DUMMY;
-
-        /* Update the best path and best path cost if this path is better */
-        if (path_cost < *best_path_cost)
-        {
-            *best_path_cost = path_cost;
-            for (int i = 0; i < num_nodes; i++)
-            {
-                best_path[i] = path[i];
-            }
-        }
-        path_cost -= DUMMY;
-        return;
-    }
-
-    /* Copy the current path to a new array */
-    for (int i = 0; i < num_nodes; i++)
-    {
-        current_path[i] = path[i];
-    }
-
-    /* Try all possible next nodes for the current path */
-    for (int i = 0; i < num_nodes; i++)
-    {
-        /* Check if the node has already been visited */
-        int visited = 0;
-        for (int j = 0; j < path_length; j++)
-        {
-            if (path[j] == i)
-            {
-                visited = 1;
-                break;
-            }
-        }
-        if (visited)
-        {
-            continue;
-        }
-
-        /* Add the node to the path and update the path cost */
-        current_path[path_length] = i;
-        path_cost += distances[path[path_length - 1]][i];
-
-        /* Recursively call the function with the updated path */
-        wanderingSalesmanProblem(num_nodes, distances, current_path, path_length + 1, path_cost, best_path, best_path_cost);
-
-        /* Remove the node from the path and revert the path cost */
-        current_path[path_length] = -1;
-        path_cost -= distances[path[path_length - 1]][i];
-    }
-}
-
-int calculateBound(int num_nodes, int distances[][MAX_NODES], int path[], int path_length)
-{
-    int bound = 0;
-    int min_distance;
-    int visited[num_nodes];
-
-    /* Initialize visited array to 0 */
-    for (int i = 0; i < num_nodes; i++)
-    {
-        visited[i] = 0;
-    }
-
-    /* Mark all visited nodes as 1 */
-    for (int i = 0; i < path_length; i++)
-    {
-        visited[path[i]] = 1;
-    }
-
-    /* For each unvisited node, find the minimum distance to a visited node */
-    for (int i = 0; i < num_nodes; i++)
-    {
-        if (visited[i] == 1)
-        {
-            continue;
-        }
-        min_distance = INT_MAX;
-        for (int j = 0; j < path_length; j++)
-        {
-            if (distances[i][path[j]] < min_distance)
-            {
-                min_distance = distances[i][path[j]];
-            }
-        }
-
-        /* Add the minimum distance to the bound */
-        bound += min_distance;
-    }
-
-    /* Add the distance from the last visited node to the starting node */
-    bound += distances[path[path_length - 1]][path[0]];
-
-    return bound;
-}
-
-void printPath(int num_nodes, int path[], int path_cost)
-{
-    for (int i = 0; i < num_nodes; i++)
-    {
-        cout << path[i] + 1 << " ";
-    }
-    cout << "\nPath Cost: " << path_cost - DUMMY << endl;
-}
-
-int readFile(int num_nodes, int distances[][MAX_NODES])
-{
-    /* Open the input file */
-    // Open the file
-    ifstream file("dist4");
-
-    // Read the number of nodes
-    file >> num_nodes;
-    cout << "Num Nodes: " << num_nodes << endl;
-
-    // Read the lower triangular matrix
-    for (int i = 0; i < num_nodes; i++)
+    /* Read the lower triangular matrix */
+    for (int i = 0; i < n; i++)
     {
         for (int j = 0; j <= i; j++)
         {
             if (i != j)
             {
-                file >> distances[i][j];
+                fscanf(file, "%d", &dist[i][j]);
             }
         }
     }
 
-    // Replicate the upper triangular matrix
-    for (int i = 0; i < num_nodes; i++)
+    /* Replicate the upper triangular matrix */
+    for (int i = 0; i < n; i++)
     {
-        for (int j = i + 1; j < num_nodes; j++)
+        for (int j = i + 1; j < n; j++)
         {
             if (i != j)
             {
-                distances[i][j] = distances[j][i];
+                dist[i][j] = dist[j][i];
             }
         }
     }
 
-    // Set diagonal elements to 0
-    for (int i = 0; i < num_nodes; i++)
+    /* Set diagonal elements to 0 */
+    for (int i = 0; i < n; i++)
     {
-        distances[i][i] = 0;
+        dist[i][i] = 0;
     }
 
-    // Print the distance matrix
-    for (int i = 0; i < num_nodes; i++)
+    /* Print the distance matrix */
+    printf("The number of cities : %d\n", n);
+    for (int i = 0; i < n; i++)
     {
-        for (int j = 0; j < num_nodes; j++)
+        for (int j = 0; j < n; j++)
         {
-            cout << distances[i][j] << " ";
+            printf("%d ", dist[i][j]);
         }
-        cout << endl;
+        printf("\n");
     }
 
-    // Close the input file
-    file.close();
+    /* Close the input file */
+    fclose(file);
+}
 
-    return num_nodes;
+void init()
+{
+    memset(curr_path, -1, sizeof curr_path);
+    memset(best_path, -1, sizeof best_path);
+    memset(visited, false, sizeof visited);
+    curr_bound = 0;
+    bound = 0;
+}
+
+void copy_path()
+{
+    for (int i = 0; i < n; i++)
+    {
+        best_path[i] = curr_path[i];
+    }
+}
+
+void tsp(int u, int level, int task_id)
+{
+    if (level == n)
+    {
+        if (curr_bound < bound)
+        {
+            bound = curr_bound;
+            copy_path();
+        }
+
+        return;
+    }
+
+    for (int v = 0; v < n; v++)
+    {
+        if (level == 2 && v == 0)
+        {
+            ctr1 = u;
+            while (ctr1 != 0)
+            {
+                if (ctr1 - 1 != 0)
+                {
+                    visited[ctr1 - 1] = false;
+                }
+                ctr1--;
+            }
+        }
+
+        if (dist[u][v] != -1 && !visited[v])
+        {
+            int temp_bound = curr_bound + dist[u][v];
+            if (temp_bound < bound)
+            {
+                curr_path[level] = v;
+                visited[v] = true;
+                curr_bound += dist[u][v];
+                tsp(v, level + 1, task_id);
+                curr_bound -= dist[u][v];
+                visited[v] = false;
+                if (level == 1)
+                {
+                    return;
+                }
+            }
+        }
+    }
+}
+
+int main(int argc, char **argv)
+{
+    int start, end;
+    int temp_bound1 = 10000;
+    int temp_bound2;
+    int temp_path1[N];
+    int temp_path2[N];
+
+    int temp = 10000;
+    int temp_p[N];
+    /* Initialize MPI */
+    MPI_Init(&argc, &argv);
+    /* Get the number of tasks */
+    double startTime;
+    int num_tasks;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_tasks);
+
+    /* Get the task ID */
+    int task_id;
+    MPI_Comm_rank(MPI_COMM_WORLD, &task_id);
+
+    /* Master process */
+    if (task_id == 0)
+    {
+        /* Read the input */
+        read();
+
+        /* Initialize variables */
+        init();
+
+        int u = 0;
+        for (int i = 0; i < n; i++)
+        {
+            if (dist[u][i] != 0)
+            {
+                bound += dist[u][i];
+                u++;
+            }
+        }
+    }
+
+    memset(curr_path, -1, sizeof curr_path);
+    memset(best_path, -1, sizeof best_path);
+    memset(visited, false, sizeof visited);
+    curr_bound = 0;
+    MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&dist, N * N, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&bound, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    double start_time = MPI_Wtime();
+
+    int remaining_cities = n % num_tasks;
+    int block_size;
+    if (n >= num_tasks)
+    {
+        block_size = ceil(n / num_tasks);
+        start = task_id * block_size;
+        end = start + block_size - 1;
+    }
+    else
+    {
+        block_size = 1;
+        start = task_id;
+        end = start;
+    }
+    if (task_id < remaining_cities)
+    {
+        start += task_id;
+        end = start + block_size;
+    }
+    else
+    {
+        start += remaining_cities;
+        end = start + block_size - 1;
+    }
+
+    for (int i = start; i <= end; i++)
+    {
+        // if(task_id != 0){
+        for (int k = 0; k <= i; k++)
+        {
+            visited[k] = true;
+        }
+        curr_path[0] = 0;
+        tsp(0, 1, task_id);
+
+        if (bound < temp_bound1)
+        {
+            temp_bound1 = bound;
+            for (int i = 0; i < n; i++)
+            {
+                temp_path1[i] = best_path[i];
+            }
+        }
+    }
+
+    /* Send the best path and bound to the master */
+    MPI_Send(&temp_bound1, 1, MPI_INT, 0, 2, MPI_COMM_WORLD);
+    MPI_Send(temp_path1, N, MPI_INT, 0, 3, MPI_COMM_WORLD);
+
+    /*
+     cout << "Minimum cost: " << bound <<" BY rank : "<<task_id<<endl;
+     cout << "Path: ";
+     for (int i = 0; i < n; i++)
+     {
+         cout << best_path[i] << " ";
+     }
+     cout<<" By rank : "<<task_id;
+     */
+    /* Slave processes */
+
+    /* Receive the values */
+
+    /* Slave process handles its portion of the tree */
+
+    // for (int i = start; i <= task_id; i++) {
+    //   visited[i] = true;
+    // }
+    // tsp(0, 1, task_id);
+
+    //}
+    /* Finalize MPI */
+    // MPI_Barrier(MPI_COMM_WORLD);
+    double end_time = MPI_Wtime();
+    double elapsed_time = end_time - start_time;
+    if (task_id == 0)
+    {
+        /* Receive the best path and bound from the slaves */
+        for (int i = 1; i < num_tasks; i++)
+        {
+            MPI_Recv(&temp_bound2, 1, MPI_INT, i, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(temp_path2, N, MPI_INT, i, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            /* Update the best path and bound if necessary */
+            if (temp_bound2 < temp_bound1)
+            {
+                temp_bound1 = temp_bound2;
+                for (int j = 0; j < n; j++)
+                {
+                    temp_path1[j] = temp_path2[j];
+                }
+            }
+        }
+
+        /* Print the best path and bound */
+        cout << "Minimum cost: " << temp_bound1 << endl;
+        cout << "Path: ";
+        for (int i = 0; i < n; i++)
+        {
+            cout << temp_path1[i] << " ";
+        }
+        printf("\nThe computation took %.2lf seconds\n", elapsed_time);
+    }
+    MPI_Finalize();
+
+    return 0;
 }
