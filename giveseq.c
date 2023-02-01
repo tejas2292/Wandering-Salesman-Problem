@@ -1,16 +1,16 @@
-#include <bits/stdc++.h>
 #include <stdio.h>
-#include <cstring>
-#include <algorithm>
+#include <stdbool.h>
+#include <string.h>
+#include <math.h>
 
 const int N = 100;
 int n;
-int dist[N][N];
-int curr_path[N];
-int best_path[N];
+int dist[100][100];
+int curr_path[100];
+int best_path[100];
 int curr_bound;
 int bound;
-bool visited[N];
+bool visited[100];
 
 void copy_path()
 {
@@ -98,7 +98,6 @@ int main()
     curr_bound = 0;
     bound = 1000000;
 
-    srand((unsigned)time(NULL));
     curr_path[0] = 0;
     visited[0] = true;
     tsp(0, 1);
