@@ -1,7 +1,5 @@
 #include <bits/stdc++.h>
 #include <iostream>
-#include <cstring>
-#include <algorithm>
 #include <time.h>
 #include <cmath>
 #include <mpi.h>
