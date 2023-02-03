@@ -55,19 +55,27 @@ int main(int argc, char *argv[])
             cerr << "Please provide a file name as command line argument." << endl;
             exit(1);
         }
-        else
+    }
+    else // in remaining processes also check file is passed or not
+    {
+        /* check user has given file name or not */
+        if (argc < 2)
         {
-            /* call function to read the file */
-            readFile(fileName.assign(argv[1]));
-
-            start_time = MPI_Wtime();
-
-            /* initialize the required memory to the variables */
-            initialization();
-
-            /* Calculate the bound */
-            calculateInitialBound();
+            exit(1);
         }
+    }
+    if (rank == 0)
+    {
+        /* call function to read the file */
+        readFile(fileName.assign(argv[1]));
+
+        start_time = MPI_Wtime();
+
+        /* initialize the required memory to the variables */
+        initialization();
+
+        /* Calculate the bound */
+        calculateInitialBound();
     }
 
     /* All rocesses including 0 as well */
