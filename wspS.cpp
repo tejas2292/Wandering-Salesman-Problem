@@ -154,7 +154,7 @@ void WSP(int curr_city, int level)
         if (dist[curr_city][v] != -1 && !visited_cities[v])
         {
             int temp_bound = current_bound + dist[curr_city][v];
-            if (temp_bound < bound)
+            if (temp_bound < bound) // prune the path if upcoming bound is greater than global bound
             {
                 current_path[level] = v;
                 visited_cities[v] = true;
