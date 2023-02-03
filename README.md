@@ -1,82 +1,51 @@
 # Wandering-Salesman-Problem
 
-The matrix multiplication and addition algorithm is included in the project in both sequential and parallel iterations.
-This paper compares the parallel and sequential algorithms for matrix multiplication and addition and explains the performance differences and potential advantages (if any) of the parallel solution for cloud architecture employing
-parallel computing parameters. Both of the algorithms were created using the C programming language. The Open MPI package was used to create the parallel algorithm. Every type of matrix pair A, B is compatible with the solution (with the requirement that
-the number of columns of matrix A must be equal to the number of rows of matrix B). Additionally, the number of rows and/or columns in matrices can be divided by the number of processors or not. Input matrices can be square or
-not square. Files are used as input and output in the parallel solution that was built. The output product matrix is written in file "outfile" once the input has been read from file "infile." The algorithm uses the following work division
-technique when given p processing units and the input matrices A:m x n and B: n x l
+## Serial Algorithm
+The function WSP takes in two parameters: curr_city which represents the current city the salesman is in and level which represents the current depth of the search tree. The function first checks if the level is equal to n (the total number of cities) and if so, it compares the current bound with the global bound. If the current bound is lower than the global bound, it updates the global bound and copies the current path as the best path. Next, the function loops through all the cities and checks if the next city is present and not yet visited. If so, it calculates the temporary bound by adding the distance between the current city and the next city. If the temporary bound is lower than the global bound, it updates the current path, marks the next city as visited, adds the distance to the current bound, and calls the WSP function recursively with the next city and the next level and if not, the program will prune the tree and won’t travel further on that root. Finally, it resets the current bound and visited status to prepare for checking the next city.
+
+## Parallel Algorithm
+All processes carry out the primary task (Master and slaves). The master process first calculates the initial bound after reading the input file and initializing the necessary memory. Then, the master process broadcasts to all other processes n (number of cities), dist (distance matrix), and bound (current bound). The divide and conquer method is then used to divide the tree into manageable chunks for each task. Working on its own branch of the tree, each process determines the optimum path and relays it to the master process. Finally, the master process selects the optimal path and bound among the processes after receiving them from each.
 
 ## Project structure
 
 - source/
-  - matrixAdditionS.c -> _Sequential algorithm Addition_
-  - matrixAdditionP.c -> _Parallel algorithm Addition_
-  - matrixMultiplicationS.c -> _Sequential algorithm Multiplication_
-  - matrixMultiplicationP.c -> _Parallel algorithm Multiplication_
-  - matrixOps.c -> _Matrix operations for creation, write and read_
-  - matrixOps.h -> _Header file to include in source codes_
-  - writeMatrix.c -> _Writes input matrices A and B into the file "test/infile"_
-- test/ -> _Automatically generated folder at first writeMatrix execution_
+  - wspP.cpp -> _Parallel Algorithm WSP_
+  - wspS.cpp -> _Serial Algorithm WSP_
+  - dist17 -> _Input Problem of 17 Distances_
 
 ## Getting Started
 
-<ins>Remember to be in project root folder "MPI-on-Cluster/" before proceeding</ins><br>
+<ins>Remember to be in project root folder "Wandering-Salesman-Problem/source" before proceeding</ins><br>
 Execute the following steps in order to have a fully running program:<br>
 
 ### Compilation
 
-1. Compile the file _writeMatrix.c_ with the following command:
+1. Compile the file _wspS.cpp_ with the following command:
 
 ```
-gcc source/writeMatrix.c source/matrixOps.c -o writeMatrix
+g++ wspS.cpp
 ```
 
-2. Compile the file _matrixMultiplicationS.c_ with the following command:
+2. Compile the file _wspP.cpp_ with the following command:
 
 ```
-gcc source/matrixMultiplicationS.c source/matrixOps.c -o seqMul
-```
-
-3. Compile the file _matrixMultiplicationP.c_ with the following command:
-
-```
-mpicc source/matrixMultiplicationP.c source/matrixOps.c -o parMul
-```
-
-4. Compile the file _matrixAdditionS.c_ with the following command:
-
-```
-gcc source/matrixAdditionS.c source/matrixOps.c -o seqAdd
-```
-
-5. Compile the file _matrixAdditionP.c_ with the following command:
-
-```
-mpicc source/matrixAdditionP.c source/matrixOps.c -o parAdd
+mpicxx wspP.cpp
 ```
 
 ### Execution
 
-<ins>Change directory to "MPI-on-Cluster" before proceeding with the following commands<ins>
-
-1. Execute file _writeMatrix_ with the following command:
+1. Execute object code file of _wspS.cpp_ with the following command:
 
 ```
-./writeMatrix [rows A] [columns A] [rows B] [columns B]
+./a.out [inputFile]
 ```
 
-Pass the four parameters to generate matrices A and B of the desired size
+Pass the one parameter as a input/distances of cities
 
-2. At this point you can:
-   _ Execute the sequential program with the following command:
-   `    ./seqMul or ./seqAdd
-   `
-   OR
-   _ Execute the parallel program on local machine with the following command:
-   `    mpirun -np [number of cpus] ./parMul or ./parAdd
-   `
-   OR \* Execute the parallel program on distributed environment with the following command:
-   `    mpirun -np [number of cpus] --hostfile [hfile] ./parMul or ./parAdd
-   `
-   <br>
+2. Execute object code file of _wspP.cpp_ with the following command:
+
+```
+mpirun -np [number of cpus] ./a.out [inputFile]
+```
+
+Pass the one parameter as a input/distances of cities
